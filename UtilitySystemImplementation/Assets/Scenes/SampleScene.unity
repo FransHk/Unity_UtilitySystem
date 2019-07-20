@@ -230,8 +230,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 814a3c07625a223479b7715b3707ca2a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  agentHealth: 100
-  agentEnergy: 100
+  agentHealth: 4.79
+  agentEnergy: 81.08
   agentAttack: 100
   healthWeight: 1
   energyWeight: 1
@@ -247,9 +247,9 @@ NavMeshAgent:
   m_AgentTypeID: 0
   m_Radius: 0.5
   m_Speed: 25
-  m_Acceleration: 8
+  m_Acceleration: 15
   avoidancePriority: 50
-  m_AngularSpeed: 120
+  m_AngularSpeed: 200
   m_StoppingDistance: 0
   m_AutoTraverseOffMeshLink: 1
   m_AutoBraking: 1
@@ -461,8 +461,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 436391d286dd0244eb57115d2eddcd40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  healthBoost: 50
-  energyBoost: 0
+  healthBoost: 80
+  energyBoost: 18
   attackBoost: 0
   type: 0
 --- !u!54 &1571741405
@@ -477,7 +477,7 @@ Rigidbody:
   m_Drag: 0
   m_AngularDrag: 0.05
   m_UseGravity: 1
-  m_IsKinematic: 0
+  m_IsKinematic: 1
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
@@ -830,7 +830,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1819134039
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -955,7 +955,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1940898350
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1181,7 +1181,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 436391d286dd0244eb57115d2eddcd40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  healthBoost: 50
+  healthBoost: 100
   energyBoost: 0
   attackBoost: 0
   type: 0
