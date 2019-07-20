@@ -2,17 +2,22 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// Responsibility:
+/// Calculate utility
+/// </summary>
 public class Utility : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    /// <summary>
+    /// Returns utility for given state
+    /// as a percentage
+    /// </summary>
+    float CalcUtility(Actions action)
     {
-        
-    }
+        float utility = 0f;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
+
+
+        return utility;
     }
 }
