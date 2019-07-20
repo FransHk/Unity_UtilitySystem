@@ -6,9 +6,22 @@ using UnityEngine;
 /// The boosts that this item contains
 /// on being applied to the agent
 /// </summary>
-public class Item : MonoBehaviour
+public class Item : MonoBehaviour, IPossibilityTarget
 {
-    public float HealthBoost { get; set;}
-    public float EnergyBoost { get; set;}
-    public float AttackBoost { get; set;}
+   
+    public PossibilityType Type { get => type; set => type = value; }
+    public float HealthBoost { get => healthBoost; set => healthBoost = value; }
+    public float EnergyBoost { get => energyBoost; set => energyBoost = value; }
+    public float AttackBoost { get => attackBoost; set => attackBoost = value; }
+
+
+    [SerializeField] private float healthBoost;
+    [SerializeField] private float energyBoost;
+    [SerializeField] private float attackBoost;
+
+    
+
+    [SerializeField]
+    [Header("The type of possibility this item offers.")]
+    private PossibilityType type;
 }
