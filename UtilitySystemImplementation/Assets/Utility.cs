@@ -8,12 +8,18 @@ using UnityEngine;
 /// </summary>
 public class Utility : MonoBehaviour
 {   
+    
+    public const float ENERGY_COST_ATTACK = 10f;
+
     /// <summary>
     /// Returns utility for given state
     /// as a percentage
     /// </summary>
     public static float CalcUtility(PossibilityModel model, AgentBase agent)
     {
+        
+        // Calculate the utility percentage
+        // of applying an item for this agent
         if(model.Type == PossibilityType.APPLY_ITEM)
         {
             float projectedHealth, projectedEnergy, projectedAttack;
@@ -57,14 +63,58 @@ public class Utility : MonoBehaviour
             weightedEnergy = energyIncrease * agent.EnergyWeight;
             weightedAttack = attackIncrease * agent.AttackWeight;
 
+            // Calculate the utility
             float utility = (weightedHealth + weightedEnergy + weightedAttack) / 3;
 
-            Debug.Log("Agent: " + agent.name + " - Calculated utility of: " + utility + " % " 
-             + "for an item");
+            // Debug the utility
+            if(agent.EnableDebugs)
+                Debug.Log("Agent: " + agent.name + " - Calculated utility of: " + utility + " % " 
+                + "for an item");
 
              return utility;
         }
+        
+        // Calculate the utility percentage of 
+        // an attack for this agent
+        else if (model.Type == PossibilityType.ATTACK)
+        {
+            float projectedHealth, projectedEnergy;
+            float enemyProjectedHealth;
+            float projectedLoss, enemyProjectedLoss;
+            float weightedDamageDealt, weightedHealthLoss;
 
+            // Calculate the amount of health this
+            // agent would have left in case it traded
+            // damage with another agent
+            projectedHealth = agent.AgentHealth - model.TargetAgent.AgentAttack;
+            projectedEnergy = agent.AgentEnergy - ENERGY_COST_ATTACK;
+
+            // If energy or health would fall below zero,
+            // it has zero utility % for this agent 
+            if(projectedEnergy <= 0 || projectedHealth < 0)
+                return 0f;
+
+            enemyProjectedHealth = model.TargetAgent.AgentHealth - agent.AgentAttack;
+            
+            projectedLoss = agent.AgentHealth - projectedHealth;
+            enemyProjectedLoss = model.TargetAgent.AgentHealth - enemyProjectedHealth;
+
+            weightedHealthLoss = (projectedLoss * agent.HealthWeight);
+            weightedDamageDealt = (enemyProjectedLoss * agent.DealDamageWeight);
+
+            float utility = (weightedHealthLoss + weightedDamageDealt) /2;
+
+            // Debug the final utility outcome
+            if(agent.EnableDebugs)
+                Debug.Log("Agent: " + agent.name + " - Calculated utility of: " + utility + " % "
+                + "for an attack");
+
+            return utility;
+        }
+
+        // The possibility type is unknown and
+        // therefore we return a utility % of
+        // 0
         return 0f;
     }
 

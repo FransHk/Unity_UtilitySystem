@@ -17,11 +17,14 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     public float HealthWeight { get => healthWeight; set => healthWeight = value; }
     public float EnergyWeight { get => energyWeight; set => energyWeight = value; }
     public float AttackWeight { get => attackWeight; set => attackWeight = value; }
+    public float DealDamageWeight { get => dealDamageWeight; set => dealDamageWeight = value; }
+    public bool EnableDebugs { get => enableDebugs; set => enableDebugs = value; }
 
     protected NavMeshAgent navMesh;
     [SerializeField] private float agentHealth = 100;
     [SerializeField] private float agentEnergy = 100;
     [SerializeField] private float agentAttack = 20;
+    [SerializeField] private bool enableDebugs;
 
     // Weights that determine the 
     // agent's behaviour
@@ -31,11 +34,15 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     [SerializeField] private float energyWeight;
     [Range(0, 1)]
     [SerializeField] private float attackWeight;
+    [Range(0,1)]
+    [SerializeField] private float dealDamageWeight;
 
     // Component references
     protected AgentSenses agentSenses;
-    private PossibilityType type;
+    private PossibilityType type = PossibilityType.ATTACK;
     private Utility agentUtility;
+    
+
 
 
     // Start is called before the first frame update
@@ -59,23 +66,32 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     }
     private IEnumerator CheckPossibilities()
     {
-        
         yield return new WaitForSeconds(2f);
+        try
+        {
+            
 
-        EvaluateUtility();
-        StartCoroutine(CheckPossibilities());
+            EvaluateUtility();
+            StartCoroutine(CheckPossibilities());
+        }
+        catch
+        {
+            StartCoroutine(CheckPossibilities());
+        }
+ 
     }
 
     protected virtual void EvaluateUtility()
     {
         float highestUtility = 0;
-        PossibilityModel highestModel;
+        PossibilityModel highestModel = null;
         GameObject highestObj = null;
 
         foreach(GameObject obj in agentSenses.RadarRangeList)
         {
             
             PossibilityModel model = GetPossibilityModel(obj);
+            
             float currentUtility = Utility.CalcUtility(model, this);
 
             if(currentUtility > highestUtility)
@@ -88,9 +104,42 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         }
 
         if(highestObj != null)
-            StartCoroutine(PickupAction(highestObj));
-        
+        {
+            if(highestModel.Type == PossibilityType.APPLY_ITEM)
+            {
+                StartCoroutine(PickupAction(highestObj));
+            }
+            else if(highestModel.Type == PossibilityType.ATTACK)
+            {
+                StartCoroutine(AttackAction(highestObj));
+            }
+        }
             
+    }
+
+    protected virtual IEnumerator AttackAction(GameObject target)
+    {
+        if(target == null)
+            yield break;
+
+        //Debug.Log("Agent: navigates to " + item.name + " to perform a pick-up.");
+        var dist = Vector3.Distance(transform.position, target.transform.position);
+
+        navMesh.SetDestination(target.transform.position);
+
+        yield return new WaitForSeconds(3f);
+
+        if (dist < DISTANCE_BOUNDS)
+        {
+            Debug.Log("Agent reached item to pick up, attempting to pick it up and apply it..");
+
+            // reached object, pick it up/apply it
+            Attack(target);
+        }
+        else
+        {
+            StartCoroutine("AttackAction", target);
+        }
     }
 
     /// <summary>
@@ -153,10 +202,25 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         Debug.Log("Agent successfully applied item: " + itemObject.name + " to itself.");
     }
 
-    
-    protected virtual void AttackAgent(AgentInstance targetAgent)
+    // Attack a valid agent base 
+    // target
+    protected virtual void Attack(GameObject target)
     {
-        
+        // Attempt to attack, this sometimes fails
+        // if the target gets destroyed right before 
+        // taking damage
+        try
+        {
+            if (target.GetComponent<AgentBase>() != null)
+            {
+                target.GetComponent<AgentBase>().TakeDamage(agentAttack);
+            }
+        }
+        catch
+        {
+           // Debug.Log("Warning: Agent tried to attack a target that was already destroyed..");
+        }
+       
     }
 
     // Cancel agent navigation by
@@ -205,7 +269,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             // a new possbility model for this enemy agent
             model = new PossibilityModel(target.Type, targetPos, targetAgent);
 
-            Debug.Log("Created a new attack possibility for agent: " + obj.name);
+            //Debug.Log("Created a new attack possibility for agent: " + obj.name);
         }
         else
         {
@@ -215,5 +279,17 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         }
 
         return model;
+    }
+
+    public void TakeDamage(float dmg)
+    {
+        AgentHealth -= dmg;
+        if(AgentHealth <= 0)
+        {
+            Debug.Log("An agent was destroyed by taking fatal damage..");
+            navMesh.enabled = false;
+            Destroy(this.gameObject);
+            
+        }
     }
 }
