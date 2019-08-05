@@ -7,7 +7,10 @@ using UnityEngine.AI;
 
 public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 {
-    private const float DISTANCE_BOUNDS = 8f;
+    private const float DISTANCE_BOUNDS = 12f;
+    private const float ACTION_TICK_TIME = 1.5f;
+
+
     // All accessors of the
     // agent class
     public PossibilityType Type { get => type; set => type = value; }
@@ -37,15 +40,19 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     [Range(0,1)]
     [SerializeField] private float dealDamageWeight;
 
+
     // Component references
     protected AgentSenses agentSenses;
-    private PossibilityType type = PossibilityType.ATTACK;
+    protected AgentDebug agentDebug;
     private Utility agentUtility;
+
+    // This agent itself is also a 
+    // attack possibility for other 
+    // agents, this variable defines
+    // that
+    private PossibilityType type = PossibilityType.ATTACK;
+   
     
-
-
-
-    // Start is called before the first frame update
     protected void Awake()
     {
         try
@@ -66,7 +73,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     }
     private IEnumerator CheckPossibilities()
     {
-        yield return new WaitForSeconds(2f);
+        yield return new WaitForSeconds(ACTION_TICK_TIME);
         try
         {
             
@@ -82,18 +89,28 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     }
 
     protected virtual void EvaluateUtility()
-    {
+    {   
+        // Variables that keep that of
+        // the highest utility action
         float highestUtility = 0;
         PossibilityModel highestModel = null;
         GameObject highestObj = null;
 
+        // Iterate through all possibilities
+        // in range of this agent
         foreach(GameObject obj in agentSenses.RadarRangeList)
         {
-            
+            // Create a possibility model
+            // of that detected object
             PossibilityModel model = GetPossibilityModel(obj);
             
+            // Calculate the utility %
+            // of that given possibility
             float currentUtility = Utility.CalcUtility(model, this);
 
+            // Compare and overwrite
+            // if more suitable than
+            // previous utility
             if(currentUtility > highestUtility)
             {
                 highestUtility = currentUtility;
@@ -103,6 +120,9 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             
         }
 
+        // After iterating, take highest
+        // model and execute the corresponding
+        // action
         if(highestObj != null)
         {
             if(highestModel.Type == PossibilityType.APPLY_ITEM)
@@ -118,20 +138,22 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     }
 
     protected virtual IEnumerator AttackAction(GameObject target)
-    {
+    {   
+        // Navigate the agent to the 
+        // attack target
         if(target == null)
             yield break;
 
-        //Debug.Log("Agent: navigates to " + item.name + " to perform a pick-up.");
         var dist = Vector3.Distance(transform.position, target.transform.position);
 
         navMesh.SetDestination(target.transform.position);
 
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(ACTION_TICK_TIME);
 
+        // Check if we reached target,  
         if (dist < DISTANCE_BOUNDS)
         {
-            Debug.Log("Agent reached item to pick up, attempting to pick it up and apply it..");
+            Debug.Log("Agent reached target to attack.");
 
             // reached object, pick it up/apply it
             Attack(target);
@@ -155,11 +177,12 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 
         navMesh.SetDestination(item.transform.position);
 
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(ACTION_TICK_TIME);
         
         if(dist < DISTANCE_BOUNDS)
         {
-            Debug.Log("Agent reached item to pick up, attempting to pick it up and apply it..");
+            if(enableDebugs)
+                Debug.Log("Agent reached item to pick up, attempting to pick it up and apply it..");
 
             // reached object, pick it up/apply it
             ApplyItem(item);
@@ -188,6 +211,8 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         agentEnergy += boostItem.EnergyBoost;
         agentAttack += boostItem.AttackBoost;
 
+        // Clamp values to their maximum
+        // of 100 each
         if(agentHealth > 100)
             agentHealth = 100;
         if(agentEnergy > 100)
@@ -195,11 +220,18 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         if(agentAttack > 100)
             agentAttack = 100;
         
+        // Remove the applied item from
+        // possibility list
         agentSenses.RadarRangeList.Remove(itemObject);
+        
+        // Destroy the item
         Destroy(itemObject);
-        this.CancelNavigation();
 
-        Debug.Log("Agent successfully applied item: " + itemObject.name + " to itself.");
+        // End navigation
+        this.CancelNavigation();
+        
+        if(EnableDebugs)
+            Debug.Log("Agent successfully applied item: " + itemObject.name + " to itself.");
     }
 
     // Attack a valid agent base 
@@ -227,8 +259,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     // resetting its path
     protected virtual void CancelNavigation()
     {
-        navMesh.SetDestination(Vector3.zero);
-        //navMesh.ResetPath();   
+        navMesh.SetDestination(Vector3.zero); 
     }
 
     /// <summary>
@@ -240,6 +271,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     {
         if(obj == null)
             return null;   
+
         // The interface held by every possible
         // target for an action
         IPossibilityTarget target = obj.GetComponent<IPossibilityTarget>();
@@ -274,15 +306,22 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         else
         {
             // Unknown target, abort
-            Debug.Log("Uknow target model found by agent..");
+            if(enableDebugs)
+                Debug.Log("Uknow target model found by agent..");
+
             return null;
         }
 
         return model;
     }
 
+    /// <summary>
+    /// The agent takes a certain
+    /// amount of damage
+    /// </summary>
+    /// <param name="dmg"></param>
     public void TakeDamage(float dmg)
-    {
+    {   
         AgentHealth -= dmg;
         if(AgentHealth <= 0)
         {
@@ -292,4 +331,6 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             
         }
     }
+
+    
 }
