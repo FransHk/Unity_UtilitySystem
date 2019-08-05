@@ -5,7 +5,7 @@ using UnityEngine;
 public class AgentSenses : MonoBehaviour
 {   
     private const float INTERACTABLE_RADIUS = 1f;
-    private const float RADAR_RADIUS = 35f;
+    private const float RADAR_RADIUS = 65f;
     private const float REFRESH_DELAY = 2f;
     public List<GameObject> InteractableRangeList = new List<GameObject>();
     public List<GameObject> RadarRangeList = new List<GameObject>();

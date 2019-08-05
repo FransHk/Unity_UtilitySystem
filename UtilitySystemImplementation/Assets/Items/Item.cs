@@ -30,7 +30,7 @@ public class Item : MonoBehaviour, IPossibilityTarget
     private PossibilityType type;
 
 
-    private void Awake()
+    private void Start()
     {
         if(hpBoost == null || enBoost == null || atBoost == null)
         {

@@ -9,9 +9,11 @@ public enum PossibilityType
 
 public class PossibilityModel : MonoBehaviour
 {
+    public const float ENERGY_COST_ATTACK = 10f;
     public PossibilityType Type { get; private set; }
     public Item TargetItem { get; private set; }
     public Vector3 TargetPos { get; private set; }
+    public float EnergyCost { get;  set; }
     public AgentBase TargetAgent;
 
     // Constructor for item possibility
@@ -23,6 +25,12 @@ public class PossibilityModel : MonoBehaviour
             this.TargetItem = targetItem;
         if(targetPos != null)
             this.TargetPos = targetPos;
+        
+        // Energy cost of this attack
+        // is deducted in the AgentBase
+        // behaviour script.
+        if(type == PossibilityType.ATTACK)
+            EnergyCost = ENERGY_COST_ATTACK;
   
     }
 

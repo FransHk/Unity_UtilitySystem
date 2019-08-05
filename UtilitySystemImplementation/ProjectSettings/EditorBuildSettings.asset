@@ -4,5 +4,8 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: 'Assets/Group battle #1.unity'
+    guid: cf20ba4d9982da24199929a5be3992ad
   m_configObjects: {}

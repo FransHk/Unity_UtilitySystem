@@ -9,7 +9,9 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 {
     private const float DISTANCE_BOUNDS = 12f;
     private const float AGENT_TICKRATE = 0.25f;
-    private const float ACTION_DELAY = 2.5f;
+    private const float ACTION_DELAY = 1.5f;
+
+    private const float ENERGY_REGEN_SCALE = 1f;
 
 
     // All accessors of the
@@ -73,10 +75,28 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     
     private void Start() 
     {
-        StartCoroutine(CheckPossibilities());
+        StartCoroutine(AgentTick());
     }
-    private IEnumerator CheckPossibilities()
+
+    /// <summary>
+    /// The tick of this agent,
+    /// executes all behaviour with
+    /// a given tickrate delay.false
+    /// 
+    /// Lowering the delay will increase
+    /// stress on CPU but will improve reaction
+    /// time
+    /// </summary>
+    /// <returns></returns>
+    private IEnumerator AgentTick()
     {
+
+        // Agent recovers an amount of 1 energy
+        // per second * the regen scale for
+        // this agent 
+        if (agentEnergy < 100)
+            agentEnergy += AGENT_TICKRATE * ENERGY_REGEN_SCALE;
+
         // Updates the visual debug
         // parameters above the agent
         // on a canvas
@@ -87,11 +107,11 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         try
         {
             EvaluateUtility();
-            StartCoroutine(CheckPossibilities());
+            StartCoroutine(AgentTick());
         }
         catch
         {
-            StartCoroutine(CheckPossibilities());
+            StartCoroutine(AgentTick());
         }
  
     }
@@ -132,9 +152,8 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         // model and execute the corresponding
         // action
         if(highestObj != null)
-        {
-            agentDebug.UpdateUtility(highestModel.Type.ToString(), (int)highestUtility);
-
+        {       
+            agentDebug.UpdateUtility(highestModel.Type.ToString(), (int)highestUtility); 
             if(highestModel.Type == PossibilityType.APPLY_ITEM)
             {
                 StartCoroutine(PickupAction(highestObj));
@@ -142,7 +161,6 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             else if(highestModel.Type == PossibilityType.ATTACK)
             {
                 StartCoroutine(AttackAction(highestObj));
-                
             }
         }
         else
@@ -176,7 +194,10 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             // Agent is in range and ready to attack,
             // perform the follow up
             if(actionReady)
+            {
+                agentEnergy -= Utility.ENERGY_COST_ATTACK;
                 AttackFollowUpAction(target);
+            }
         }
         else
         {

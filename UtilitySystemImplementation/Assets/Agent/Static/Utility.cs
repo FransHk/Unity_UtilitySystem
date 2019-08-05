@@ -49,7 +49,7 @@ public class Utility : MonoBehaviour
             // Use the overload constructor to create
             // a new possbility model for this enemy agent
             model = new PossibilityModel(target.Type, targetPos, targetAgent);
-
+            model.EnergyCost = ENERGY_COST_ATTACK;
             //Debug.Log("Created a new attack possibility for agent: " + obj.name);
         }
         else
@@ -61,7 +61,8 @@ public class Utility : MonoBehaviour
     }
 
 
-    public const float ENERGY_COST_ATTACK = 10f;
+    public const float ENERGY_COST_ATTACK = 7f;
+    private const float DIVISION_CORRECTION = 0.3f;
 
     /// <summary>s
     /// Returns utility for given state
@@ -148,18 +149,26 @@ public class Utility : MonoBehaviour
 
             enemyProjectedHealth = model.TargetAgent.AgentHealth - agent.AgentAttack;
             
+            // The loss of each party involved in the
+            // damage trade
             projectedLoss = agent.AgentHealth - projectedHealth;
             enemyProjectedLoss = model.TargetAgent.AgentHealth - enemyProjectedHealth;
 
+            // The loss as a weighted value
             weightedHealthLoss = (projectedLoss * agent.HealthWeight);
             weightedDamageDealt = (enemyProjectedLoss * agent.DealDamageWeight);
 
+            // Final utiltiy of this 
+            // attack possibility
             float utility = (weightedHealthLoss + weightedDamageDealt) /2;
+            utility *= DIVISION_CORRECTION;
 
             // Debug the final utility outcome
             if(agent.EnableDebugs)
                 Debug.Log("Agent: " + agent.name + " - Calculated utility of: " + utility + " % "
                 + "for an attack");
+
+      
 
             return utility;
         }
