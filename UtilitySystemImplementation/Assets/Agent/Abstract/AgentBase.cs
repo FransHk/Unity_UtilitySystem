@@ -8,7 +8,8 @@ using UnityEngine.AI;
 public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 {
     private const float DISTANCE_BOUNDS = 12f;
-    private const float ACTION_TICK_TIME = 1.5f;
+    private const float AGENT_TICKRATE = 0.25f;
+    private const float ACTION_DELAY = 2.5f;
 
 
     // All accessors of the
@@ -24,10 +25,12 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     public bool EnableDebugs { get => enableDebugs; set => enableDebugs = value; }
 
     protected NavMeshAgent navMesh;
+    protected bool actionReady = true;
     [SerializeField] private float agentHealth = 100;
     [SerializeField] private float agentEnergy = 100;
     [SerializeField] private float agentAttack = 20;
     [SerializeField] private bool enableDebugs;
+    
 
     // Weights that determine the 
     // agent's behaviour
@@ -59,6 +62,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         {
             navMesh = GetComponent<NavMeshAgent>();
             agentSenses = GetComponent<AgentSenses>();
+            agentDebug = GetComponent<AgentDebug>();
         }
         catch
         {
@@ -73,11 +77,15 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     }
     private IEnumerator CheckPossibilities()
     {
-        yield return new WaitForSeconds(ACTION_TICK_TIME);
+        // Updates the visual debug
+        // parameters above the agent
+        // on a canvas
+        UpdateDebug();
+
+        yield return new WaitForSeconds(AGENT_TICKRATE);
+
         try
         {
-            
-
             EvaluateUtility();
             StartCoroutine(CheckPossibilities());
         }
@@ -102,7 +110,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         {
             // Create a possibility model
             // of that detected object
-            PossibilityModel model = GetPossibilityModel(obj);
+            PossibilityModel model = Utility.GetPossibilityModel(obj);
             
             // Calculate the utility %
             // of that given possibility
@@ -125,6 +133,8 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         // action
         if(highestObj != null)
         {
+            agentDebug.UpdateUtility(highestModel.Type.ToString(), (int)highestUtility);
+
             if(highestModel.Type == PossibilityType.APPLY_ITEM)
             {
                 StartCoroutine(PickupAction(highestObj));
@@ -132,7 +142,12 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             else if(highestModel.Type == PossibilityType.ATTACK)
             {
                 StartCoroutine(AttackAction(highestObj));
+                
             }
+        }
+        else
+        {
+            agentDebug.UpdateUtility("Idle..", 0);
         }
             
     }
@@ -146,17 +161,22 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 
         var dist = Vector3.Distance(transform.position, target.transform.position);
 
+        // Direct the navmesh towards
+        // the attack target
         navMesh.SetDestination(target.transform.position);
 
-        yield return new WaitForSeconds(ACTION_TICK_TIME);
+        yield return new WaitForSeconds(AGENT_TICKRATE);
 
         // Check if we reached target,  
         if (dist < DISTANCE_BOUNDS)
         {
-            Debug.Log("Agent reached target to attack.");
+            if(enableDebugs)
+                Debug.Log("Agent reached target to attack.");
 
-            // reached object, pick it up/apply it
-            Attack(target);
+            // Agent is in range and ready to attack,
+            // perform the follow up
+            if(actionReady)
+                AttackFollowUpAction(target);
         }
         else
         {
@@ -175,17 +195,35 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         //Debug.Log("Agent: navigates to " + item.name + " to perform a pick-up.");
         var dist = Vector3.Distance(transform.position, item.transform.position);
 
-        navMesh.SetDestination(item.transform.position);
-
-        yield return new WaitForSeconds(ACTION_TICK_TIME);
+        // Direct the navmesh towards the 
+        // item to be applied
         
+        try
+        {
+            if(navMesh.isOnNavMesh)
+                navMesh.SetDestination(item.transform.position);
+        }
+        catch
+        {
+            //Debug.Log("Warning: Navmesh called on an empty agent.");
+        }
+      
+
+        yield return new WaitForSeconds(AGENT_TICKRATE);
+        
+        // Check if the agent is within range
+        // of the item to be applied
         if(dist < DISTANCE_BOUNDS)
         {
             if(enableDebugs)
                 Debug.Log("Agent reached item to pick up, attempting to pick it up and apply it..");
 
-            // reached object, pick it up/apply it
-            ApplyItem(item);
+            if(actionReady)
+            {
+                ApplyItemAction(item);
+                actionReady = false;
+                StartCoroutine(ResetActionCooldown());
+            }
 
         }
         else
@@ -200,7 +238,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
     /// an item to this agent
     /// </summary>
     /// <param name="itemObject"></param>
-    protected virtual void ApplyItem(GameObject itemObject)
+    protected virtual void ApplyItemAction(GameObject itemObject)
     {
         if(itemObject == null)
             return;
@@ -219,6 +257,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
             agentEnergy = 100;
         if(agentAttack > 100)
             agentAttack = 100;
+       
         
         // Remove the applied item from
         // possibility list
@@ -228,7 +267,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         Destroy(itemObject);
 
         // End navigation
-        this.CancelNavigation();
+        this.CancelNavigationAction();
         
         if(EnableDebugs)
             Debug.Log("Agent successfully applied item: " + itemObject.name + " to itself.");
@@ -236,7 +275,7 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 
     // Attack a valid agent base 
     // target
-    protected virtual void Attack(GameObject target)
+    protected virtual void AttackFollowUpAction(GameObject target)
     {
         // Attempt to attack, this sometimes fails
         // if the target gets destroyed right before 
@@ -245,7 +284,13 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
         {
             if (target.GetComponent<AgentBase>() != null)
             {
-                target.GetComponent<AgentBase>().TakeDamage(agentAttack);
+                actionReady = false;
+                target.GetComponent<AgentBase>().TakeDamageAction(agentAttack);
+
+                // Takes the attack off cooldown
+                // after a variable cooldown time
+                // using a yield
+                StartCoroutine(ResetActionCooldown());
             }
         }
         catch
@@ -257,80 +302,41 @@ public abstract class AgentBase : MonoBehaviour, IPossibilityTarget
 
     // Cancel agent navigation by
     // resetting its path
-    protected virtual void CancelNavigation()
+    protected virtual void CancelNavigationAction()
     {
         navMesh.SetDestination(Vector3.zero); 
     }
 
-    /// <summary>
-    /// Convert an object that implements IPossbilityTarget
-    /// to a possibility model that is usable by the
-    /// Utiltiy calculation static method
-    /// </summary>
-    PossibilityModel GetPossibilityModel(GameObject obj)
-    {
-        if(obj == null)
-            return null;   
-
-        // The interface held by every possible
-        // target for an action
-        IPossibilityTarget target = obj.GetComponent<IPossibilityTarget>();
-        PossibilityModel model;
-
-        if (target == null)
-            return null;
-
-        // Create an item possibility
-        if (target.Type == PossibilityType.APPLY_ITEM)
-        {
-            Item targetItem = obj.GetComponent<Item>();
-            Vector3 targetPos = obj.transform.position;
-
-            // Use the default constructor to create
-            // a new possibility model for this item
-            model = new PossibilityModel(target.Type, targetItem, targetPos);
-        }
-
-        // Create an attack possibility
-        else if (target.Type == PossibilityType.ATTACK)
-        {
-            Vector3 targetPos = obj.transform.position;
-            AgentBase targetAgent = obj.GetComponent<AgentBase>();
-
-            // Use the overload constructor to create
-            // a new possbility model for this enemy agent
-            model = new PossibilityModel(target.Type, targetPos, targetAgent);
-
-            //Debug.Log("Created a new attack possibility for agent: " + obj.name);
-        }
-        else
-        {
-            // Unknown target, abort
-            if(enableDebugs)
-                Debug.Log("Uknow target model found by agent..");
-
-            return null;
-        }
-
-        return model;
-    }
 
     /// <summary>
     /// The agent takes a certain
     /// amount of damage
     /// </summary>
     /// <param name="dmg"></param>
-    public void TakeDamage(float dmg)
+    public void TakeDamageAction(float dmg)
     {   
+        agentDebug.FlashAgentColor(Color.red);
+
         AgentHealth -= dmg;
         if(AgentHealth <= 0)
         {
             Debug.Log("An agent was destroyed by taking fatal damage..");
             navMesh.enabled = false;
-            Destroy(this.gameObject);
-            
-        }
+            Destroy(this.gameObject);    
+        }    
     }
 
+    private void UpdateDebug()
+    {
+        agentDebug.UpdateHP((int)this.agentHealth);
+        agentDebug.UpdateEN((int)this.agentEnergy);
+        agentDebug.UpdateAT((int)this.agentAttack);
+    }
+
+    private IEnumerator ResetActionCooldown()
+    {
+        yield return new WaitForSeconds(ACTION_DELAY);
+        actionReady = true;
+    }
     
 }

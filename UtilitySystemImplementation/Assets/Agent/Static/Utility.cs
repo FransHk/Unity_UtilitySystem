@@ -3,15 +3,67 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// Responsibility:
-/// Calculate utility
+/// Converts objects that implement the 
+/// possibility interface to a possbility 
+/// model and calculates the utility
+/// of that possibility.
 /// </summary>
 public class Utility : MonoBehaviour
-{   
-    
-    public const float ENERGY_COST_ATTACK = 10f;
+{
 
     /// <summary>
+    /// Convert an object that implements IPossbilityTarget
+    /// to a possibility model that is usable by the
+    /// Utiltiy calculation static method
+    /// </summary>
+    public static PossibilityModel GetPossibilityModel(GameObject obj)
+    {
+        if (obj == null)
+            return null;
+
+        // The interface held by every possible
+        // target for an action
+        IPossibilityTarget target = obj.GetComponent<IPossibilityTarget>();
+        PossibilityModel model;
+
+        if (target == null)
+            return null;
+
+        // Create an item possibility
+        if (target.Type == PossibilityType.APPLY_ITEM)
+        {
+            Item targetItem = obj.GetComponent<Item>();
+            Vector3 targetPos = obj.transform.position;
+
+            // Use the default constructor to create
+            // a new possibility model for this item
+            model = new PossibilityModel(target.Type, targetItem, targetPos);
+        }
+
+        // Create an attack possibility
+        else if (target.Type == PossibilityType.ATTACK)
+        {
+            Vector3 targetPos = obj.transform.position;
+            AgentBase targetAgent = obj.GetComponent<AgentBase>();
+
+            // Use the overload constructor to create
+            // a new possbility model for this enemy agent
+            model = new PossibilityModel(target.Type, targetPos, targetAgent);
+
+            //Debug.Log("Created a new attack possibility for agent: " + obj.name);
+        }
+        else
+        {
+            return null;
+        }
+
+        return model;
+    }
+
+
+    public const float ENERGY_COST_ATTACK = 10f;
+
+    /// <summary>s
     /// Returns utility for given state
     /// as a percentage
     /// </summary>

@@ -1,6 +1,8 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// The boosts that this item contains
@@ -19,9 +21,26 @@ public class Item : MonoBehaviour, IPossibilityTarget
     [SerializeField] private float energyBoost;
     [SerializeField] private float attackBoost;
 
-    
+    [SerializeField]
+    private Text hpBoost, enBoost, atBoost;
+
 
     [SerializeField]
     [Header("The type of possibility this item offers.")]
     private PossibilityType type;
+
+
+    private void Awake()
+    {
+        if(hpBoost == null || enBoost == null || atBoost == null)
+        {
+            Debug.Log("Item.CS: No text components found, debug skipped.");
+            return;
+        }
+
+        hpBoost.text = "HP: " + healthBoost.ToString();
+        enBoost.text = "EN: " + energyBoost.ToString();
+        atBoost.text = "AT: " + attackBoost.ToString();
+    }
+    
 }

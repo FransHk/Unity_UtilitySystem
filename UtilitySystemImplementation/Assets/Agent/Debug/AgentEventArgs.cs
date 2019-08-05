@@ -6,5 +6,5 @@ using UnityEngine;
 
 public class AgentEventArgs : EventArgs
 {
-    // Currently unused
+    // Unimplemented
 }
